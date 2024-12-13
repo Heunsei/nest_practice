@@ -1,5 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { FindOptionsWhere, LessThan, MoreThan, Repository } from 'typeorm';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  FindOptionsWhere,
+  LessThan,
+  MoreThan,
+  QueryRunner,
+  Repository,
+} from 'typeorm';
 import { PostsModel } from './entities/posts.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -11,6 +21,12 @@ import {
   ENV_HOST_KEY,
   ENV_PROTOCOL_KEY,
 } from 'src/common/const/env-keys.const';
+import { basename, join } from 'path';
+import { POST_IMAGE_PATH, TEMP_FOLDER_PATH } from 'src/common/const/path.const';
+import { promises } from 'fs';
+import { CreatePostImageDto } from './image/dto/create-image.dto';
+import { ImageModel } from 'src/common/entity/image.entity';
+import { DEFAULT_POST_FIND_OPTIONS } from './const/default-post-find-options.const';
 
 @Injectable()
 export class PostsService {
@@ -18,11 +34,13 @@ export class PostsService {
     // typeorm 으로부터 inject 되는 레포지토리라는 어노테이션 추가.
     @InjectRepository(PostsModel)
     private readonly postsRepository: Repository<PostsModel>,
+    @InjectRepository(ImageModel)
+    private readonly imageRepository: Repository<ImageModel>,
     private readonly commonService: CommonService,
     private readonly configService: ConfigService,
   ) {}
   async getAllPost() {
-    return this.postsRepository.find({ relations: ['author'] });
+    return this.postsRepository.find({ ...DEFAULT_POST_FIND_OPTIONS });
   }
 
   async paginatePosts(dto: PaginatePostDto) {
@@ -30,7 +48,7 @@ export class PostsService {
       dto,
       this.postsRepository,
       {
-        relations: ['author'],
+        ...DEFAULT_POST_FIND_OPTIONS,
       },
       'posts',
     );
@@ -124,12 +142,13 @@ export class PostsService {
     };
   }
 
-  async getPostById(id: number) {
-    const post = await this.postsRepository.findOne({
+  async getPostById(id: number, qr?: QueryRunner) {
+    const repository = this.getRepository(qr);
+    const post = await repository.findOne({
+      ...DEFAULT_POST_FIND_OPTIONS,
       where: {
         id,
       },
-      relations: ['author'],
     });
     if (!post) {
       throw new NotFoundException();
@@ -137,20 +156,51 @@ export class PostsService {
     return post;
   }
 
-  async createPost(authorId: number, postDto: CreatePostDto, image?: string) {
+  getRepository(qr?: QueryRunner) {
+    return qr
+      ? qr.manager.getRepository<PostsModel>(PostsModel)
+      : this.postsRepository;
+  }
+
+  async createPost(authorId: number, postDto: CreatePostDto, qr?: QueryRunner) {
     // create -> 저장할 객체 생성
     // save -> 객체를 저장한다.
-    const post = this.postsRepository.create({
+    const repository = this.getRepository(qr);
+
+    const post = repository.create({
       author: {
         id: authorId,
       },
       ...postDto,
-      image,
       likeCount: 0,
+      images: [],
       commentCount: 0,
     });
-    const newPost = this.postsRepository.save(post);
+    const newPost = repository.save(post);
     return newPost;
+  }
+
+  async createPostImage(dto: CreatePostImageDto) {
+    // dto의 이미지 이름을 기반으로
+    // 파일의 경로를 생성.
+    const tempFilePath = join(TEMP_FOLDER_PATH, dto.path);
+    try {
+      // 경로를 전달했을 때 해당 경로의 파일이 접근 가능한지 알려줌
+      await promises.access(tempFilePath);
+    } catch (e) {
+      throw new BadRequestException('존재하지 않는 파일입니다.');
+    }
+    // 파일 이름'
+    const fileName = basename(tempFilePath);
+    // 새로 이동할 포스트 폴더의 경로 + 이동할 파일의 이름
+    const newPath = join(POST_IMAGE_PATH, fileName);
+    //save
+    const result = await this.imageRepository.save({
+      ...dto,
+    });
+    // 옮길 파일의 위치, 옮길 위치
+    await promises.rename(tempFilePath, newPath);
+    return result;
   }
 
   async updatePost(id: number, postDto: UpdatePostDto) {
@@ -193,6 +243,7 @@ export class PostsService {
       await this.createPost(userId, {
         title: `임시 데이터 ${i}`,
         content: `임시데이터 내용 ${i}`,
+        images: [],
       });
     }
   }

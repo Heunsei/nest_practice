@@ -8,7 +8,6 @@ import { AuthService } from '../auth.service';
 import { UsersService } from 'src/users/users.service';
 
 // 토큰 검증 시 필요한 것
-
 @Injectable()
 export class BearerTokenGuard implements CanActivate {
   constructor(

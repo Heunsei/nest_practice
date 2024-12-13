@@ -10,7 +10,8 @@ import {
   Patch,
   Query,
   UseInterceptors,
-  UploadedFile,
+  UseFilters,
+  BadRequestException,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { AccessTokenGuard } from 'src/auth/guard/bearer-token.guard';
@@ -19,13 +20,25 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PaginatePostDto } from './dto/paginate-post.dto';
 import { UsersModel } from 'src/users/entities/users.entity';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { ImageModelType } from 'src/common/entity/image.entity';
+import { DataSource, QueryRunner as QR } from 'typeorm';
+import { PostImageService } from './image/images.service';
+import { LogInterceptor } from 'src/common/interceptor/log.interceptor';
+import { QueryRunner } from 'src/common/decorator/query-runner.decorator';
+import { TransactionInterceptor } from 'src/common/interceptor/transaction.interceptor';
+import { HttpExceptionFilter } from 'src/common/exception-filter/http.exception-filter';
 
 @Controller('posts')
 export class PostsController {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(
+    private readonly postsService: PostsService,
+    private readonly postImagesService: PostImageService,
+    private readonly dataSource: DataSource,
+  ) {}
 
   @Get()
+  @UseInterceptors(LogInterceptor)
+  @UseFilters(HttpExceptionFilter)
   getPosts(@Query() query: PaginatePostDto) {
     return this.postsService.paginatePosts(query);
   }
@@ -44,13 +57,25 @@ export class PostsController {
 
   @Post()
   @UseGuards(AccessTokenGuard)
-  @UseInterceptors(FileInterceptor('image'))
-  postPosts(
+  @UseInterceptors(TransactionInterceptor)
+  async postPosts(
     @User('id') userId: number,
     @Body() body: CreatePostDto,
-    @UploadedFile() file?: Express.Multer.File,
+    @QueryRunner() qr: QR,
   ) {
-    return this.postsService.createPost(userId, body, file?.filename);
+    const post = await this.postsService.createPost(userId, body, qr);
+    for (let i = 0; i < body.images.length; i++) {
+      await this.postImagesService.createPostImage(
+        {
+          post,
+          order: i,
+          path: body.images[i],
+          type: ImageModelType.POST_IMAGE,
+        },
+        qr,
+      );
+    }
+    return this.postsService.getPostById(post.id, qr);
   }
 
   @Patch(':id')
