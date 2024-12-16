@@ -10,7 +10,7 @@ import {
   QueryRunner,
   Repository,
 } from 'typeorm';
-import { PostsModel } from './entities/posts.entity';
+import { PostsModel } from './entitiy/posts.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -246,5 +246,13 @@ export class PostsService {
         images: [],
       });
     }
+  }
+
+  async checkPostExistsById(id: number) {
+    return this.postsRepository.exists({
+      where: {
+        id,
+      },
+    });
   }
 }

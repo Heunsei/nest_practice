@@ -7,8 +7,8 @@ import {
 import { PostsService } from './posts.service';
 import { PostsController } from './posts.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PostsModel } from './entities/posts.entity';
-import { UsersModel } from 'src/users/entities/users.entity';
+import { PostsModel } from './entitiy/posts.entity';
+import { UsersModel } from 'src/users/entity/users.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from 'src/users/users.service';
@@ -31,6 +31,7 @@ import { LogMiddleware } from 'src/common/middleware/log.middleware';
   ],
   controllers: [PostsController],
   providers: [PostsService, AuthService, UsersService, PostImageService],
+  exports: [PostsService],
 })
 export class PostsModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

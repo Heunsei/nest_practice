@@ -19,7 +19,7 @@ import { User } from 'src/users/decorator/user.decorator';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PaginatePostDto } from './dto/paginate-post.dto';
-import { UsersModel } from 'src/users/entities/users.entity';
+import { UsersModel } from 'src/users/entity/users.entity';
 import { ImageModelType } from 'src/common/entity/image.entity';
 import { DataSource, QueryRunner as QR } from 'typeorm';
 import { PostImageService } from './image/images.service';

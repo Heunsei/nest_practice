@@ -1,6 +1,6 @@
 import { Column, Entity, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 import { RolesEnum } from '../const/role.const';
-import { PostsModel } from 'src/posts/entities/posts.entity';
+import { PostsModel } from 'src/posts/entitiy/posts.entity';
 import { BaseModel } from 'src/common/entity/base.entity';
 import { IsEmail, IsString, Length } from 'class-validator';
 import { lengthValidationMessage } from 'src/common/validation-message/length-validation.message';
@@ -9,6 +9,7 @@ import { emailValidationMessage } from 'src/common/validation-message/email-vali
 import { Exclude } from 'class-transformer';
 import { ChatsModel } from 'src/chats/entity/chats.entity';
 import { MessagesModel } from 'src/chats/messages/entity/messages.entity';
+import { CommentModel } from 'src/posts/comments/entity/comment.entity';
 
 @Entity()
 export class UsersModel extends BaseModel {
@@ -71,4 +72,7 @@ export class UsersModel extends BaseModel {
 
   @OneToMany(() => MessagesModel, (message) => message.author)
   messages: MessagesModel;
+
+  @OneToMany(() => CommentModel, (comment) => comment.author)
+  postComments: CommentModel[];
 }
