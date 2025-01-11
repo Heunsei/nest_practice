@@ -162,6 +162,28 @@ export class PostsService {
       : this.postsRepository;
   }
 
+  async incrementCommentCount(postId: number, qr?: QueryRunner) {
+    const repoistory = this.getRepository(qr);
+    await repoistory.increment(
+      {
+        id: postId,
+      },
+      'commentCount',
+      1,
+    );
+  }
+
+  async decrementCommentCount(postId: number, qr?: QueryRunner) {
+    const repoistory = this.getRepository(qr);
+    await repoistory.decrement(
+      {
+        id: postId,
+      },
+      'commentCount',
+      1,
+    );
+  }
+
   async createPost(authorId: number, postDto: CreatePostDto, qr?: QueryRunner) {
     // create -> 저장할 객체 생성
     // save -> 객체를 저장한다.
@@ -252,6 +274,20 @@ export class PostsService {
     return this.postsRepository.exists({
       where: {
         id,
+      },
+    });
+  }
+
+  async isPostMine(userId: number, postId: number) {
+    return this.postsRepository.exists({
+      where: {
+        id: postId,
+        author: {
+          id: userId,
+        },
+      },
+      relations: {
+        author: true,
       },
     });
   }

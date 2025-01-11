@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryRunner, Repository } from 'typeorm';
 import { CommentModel } from './entity/comment.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CommonService } from 'src/common/common.service';
@@ -16,6 +16,12 @@ export class CommentsService {
     @InjectRepository(CommentModel)
     private readonly commentsRepository: Repository<CommentModel>,
   ) {}
+
+  getRepository(qr?: QueryRunner) {
+    return qr
+      ? qr.manager.getRepository<CommentModel>(CommentModel)
+      : this.commentsRepository;
+  }
 
   paginateComments(dto: PaginateCommentsDto, postId: number) {
     return this.commonService.paginate(
@@ -42,8 +48,10 @@ export class CommentsService {
     });
   }
 
-  async deleteComment(id: number) {
-    const comment = await this.commentsRepository.findOne({
+  async deleteComment(id: number, qr?: QueryRunner) {
+    const repository = this.getRepository(qr);
+
+    const comment = await repository.findOne({
       where: {
         id,
       },
@@ -51,7 +59,7 @@ export class CommentsService {
     if (!comment) {
       throw new NotFoundException('해당 댓글은 존재하지 않습니다');
     }
-    await this.commentsRepository.delete(id);
+    await repository.delete(id);
     return id;
   }
 
@@ -59,8 +67,10 @@ export class CommentsService {
     dto: CreateCommentDto,
     postId: number,
     author: UsersModel,
+    qr?: QueryRunner,
   ) {
-    return this.commentsRepository.save({
+    const repository = this.getRepository(qr);
+    return repository.save({
       ...dto,
       post: {
         id: postId,
@@ -76,5 +86,19 @@ export class CommentsService {
     });
     const newComment = await this.commentsRepository.save(prevComment);
     return newComment;
+  }
+
+  async isCommentIsMine(userId: number, commentId: number) {
+    return this.commentsRepository.exists({
+      where: {
+        id: commentId,
+        author: {
+          id: userId,
+        },
+      },
+      relations: {
+        author: true,
+      },
+    });
   }
 }

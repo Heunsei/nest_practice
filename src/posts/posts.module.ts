@@ -18,6 +18,7 @@ import { CommonModule } from 'src/common/common.module';
 import { ImageModel } from 'src/common/entity/image.entity';
 import { PostImageService } from './image/images.service';
 import { LogMiddleware } from 'src/common/middleware/log.middleware';
+import { UserFollowersModel } from 'src/users/entity/user-followers.entity';
 @Module({
   // forFeature() -> 모델에 해당하는 레포지토리를 주입할 때.
   // forRoot() -> typeorm을 연결설정
@@ -27,7 +28,12 @@ import { LogMiddleware } from 'src/common/middleware/log.middleware';
     UsersModule,
     CommonModule,
     JwtModule.register({}),
-    TypeOrmModule.forFeature([PostsModel, UsersModel, ImageModel]),
+    TypeOrmModule.forFeature([
+      PostsModel,
+      UsersModel,
+      ImageModel,
+      UserFollowersModel,
+    ]),
   ],
   controllers: [PostsController],
   providers: [PostsService, AuthService, UsersService, PostImageService],
